@@ -44,6 +44,8 @@ pico_set_program_version(ProjetoIntegrado "0.1")
 pico_enable_stdio_uart(ProjetoIntegrado 0)
 pico_enable_stdio_usb(ProjetoIntegrado 1)
 
+pico_generate_pio_header(ProjetoIntegrado ${CMAKE_CURRENT_LIST_DIR}/ws2812.pio)
+
 # Add the standard library to the build
 target_link_libraries(ProjetoIntegrado
         pico_stdlib)
@@ -58,6 +60,8 @@ target_link_libraries(ProjetoIntegrado
             hardware_i2c
             hardware_adc
             hardware_pwm
+            hardware_clocks
+            hardware_pio
         )
 
 pico_add_extra_outputs(ProjetoIntegrado)
