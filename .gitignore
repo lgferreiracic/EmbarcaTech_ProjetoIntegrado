@@ -1,8 +1,0 @@
-# Ignorar pastas
-.vscode/
-build/
-
-# Ignorar arquivos
-.gitignore
-pico_sdk_import.cmake
-.CMakeLists-dev.txt
