@@ -59,6 +59,7 @@ uint score = 0; // Variável para armazenar a pontuação
 uint delay = 300;
 int ship_pos = 2; // Posição inicial da nave (coluna)
 uint8_t space[5][5] = {0};
+bool start_game = false; // Variável para verificar se o jogo começou
 
 // Função para debounce dos botões
 bool debounce(volatile uint32_t *last_time){
@@ -104,6 +105,11 @@ void init_buttons(){
     gpio_init(BUTTON_B_PIN);
     gpio_set_dir(BUTTON_B_PIN, GPIO_IN);
     gpio_pull_up(BUTTON_B_PIN);
+
+    // Inicialização do botão do joystick
+    gpio_init(JOYSTICK_BUTTON_PIN);
+    gpio_set_dir(JOYSTICK_BUTTON_PIN, GPIO_IN);
+    gpio_pull_up(JOYSTICK_BUTTON_PIN);
 }
 
 // Inicializa todos os buzzers
@@ -374,7 +380,7 @@ void draw_matrix() {
 // Função de callback para os botões
 void gpio_irq_handler(uint gpio, uint32_t events){
     if (gpio == BUTTON_A_PIN){
-        if (debounce(&button_a_time)){
+        if (debounce(&button_a_time) && start_game && collision){
             collision = false; // Reseta a colisão
             reset_space(); // Reseta a matriz de LEDs
             printf("\nGame Restarted!\n");
@@ -388,6 +394,12 @@ void gpio_irq_handler(uint gpio, uint32_t events){
             ssd1306_send_data(&ssd); // Atualiza o display
             printf("\nExiting...\n");
             reset_usb_boot(0,0);
+        }
+    }
+    else if (gpio == JOYSTICK_BUTTON_PIN){
+        if (debounce(&joystick_button_time) && !start_game){
+            start_game = true; 
+            printf("\nGame Started!\n");
         }
     }
 }
@@ -404,6 +416,7 @@ void init_all_hardware() {
     // Configuração de interrupções dos botões
     gpio_set_irq_enabled_with_callback(BUTTON_B_PIN, GPIO_IRQ_EDGE_FALL, true, &gpio_irq_handler);
     gpio_set_irq_enabled_with_callback(BUTTON_A_PIN, GPIO_IRQ_EDGE_FALL, true, &gpio_irq_handler);
+    gpio_set_irq_enabled_with_callback(JOYSTICK_BUTTON_PIN, GPIO_IRQ_EDGE_FALL, true, &gpio_irq_handler);
 
     // Semente aleatória
     srand(to_ms_since_boot(get_absolute_time()));
@@ -441,10 +454,25 @@ void check_score_progression() {
     }
 }
 
+// Função para exibir a tela de start
+void start_display(ssd1306_t *ssd){
+    ssd1306_fill(ssd, true); // Limpa o display
+    ssd1306_rect(ssd, 3, 3, 122, 58, false, true); // Desenha um retângulo
+    ssd1306_draw_string(ssd, "SPACEFIGHT", 20, 10); // Desenha uma string
+    ssd1306_draw_string(ssd, "Avoid the", 25, 30); // Desenha uma string
+    ssd1306_draw_string(ssd, "obstacles", 25, 48); // Desenha uma string      
+    ssd1306_send_data(ssd); // Atualiza o display
+}
+
 // Função principal
 int main() {
     init_all_hardware();
     printf("\nAvoid the obstacles!\n");
+
+    start_display(&ssd); 
+    while (start_game == false)  // Aguarda o início do jogo
+        sleep_ms(50); // Delay para evitar leitura excessiva
+    
     while (true) {
         // Leitura do joystick
         adc_select_input(1);
