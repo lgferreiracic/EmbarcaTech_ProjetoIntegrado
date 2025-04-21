@@ -144,6 +144,7 @@ void play_buzzer(uint pin, uint frequency, uint duration_ms) {
     pwm_set_gpio_level(pin, 0);              
 }
 
+// Função para tocar o som de colisão
 void play_denied_sound(){
     gpio_put(LED_RED_PIN, true); // Acende LED vermelho
     play_buzzer(BUZZER_A_PIN, 3300, 100);
@@ -154,6 +155,7 @@ void play_denied_sound(){
     gpio_put(LED_RED_PIN, false); // Apaga LED vermelho
 }
 
+// Função para tocar o som de sucesso 
 void play_success_sound(){
     gpio_put(LED_GREEN_PIN, true); // Acende LED verde
     play_buzzer(BUZZER_A_PIN, 4400, 100);
@@ -375,6 +377,8 @@ void gpio_irq_handler(uint gpio, uint32_t events){
         if (debounce(&button_a_time)){
             collision = false; // Reseta a colisão
             reset_space(); // Reseta a matriz de LEDs
+            printf("\nGame Restarted!\n");
+            printf("Avoid the obstacles!\n");
         }
     }
     else if (gpio == BUTTON_B_PIN){
@@ -382,6 +386,7 @@ void gpio_irq_handler(uint gpio, uint32_t events){
             clear_matrix();
             ssd1306_fill(&ssd, false); // Limpa o display
             ssd1306_send_data(&ssd); // Atualiza o display
+            printf("\nExiting...\n");
             reset_usb_boot(0,0);
         }
     }
@@ -415,11 +420,13 @@ void update_game_logic(uint16_t x_value, uint16_t y_value) {
         move_ship(x_value);
 
     draw_matrix();
-    joystic_movimentation(&ssd, x_value, y_value);
+    
 }
 
 // Lida com colisão (reset de variáveis)
 void handle_collision() {
+    printf("\nGame Over! Score: %d\n", score);
+    printf("Press A to restart or B to exit.\n");
     score = 0;
     delay = 300;
 }
@@ -428,6 +435,8 @@ void handle_collision() {
 void check_score_progression() {
     if (score % 500 == 0 && score != 0) {
         play_success_sound();
+        printf("\nCongratulations! Score: %d\n", score);
+        printf("The game is getting faster!\n");
         if (delay > 100) delay -= 50; // Limita para não ficar muito rápido
     }
 }
@@ -435,7 +444,7 @@ void check_score_progression() {
 // Função principal
 int main() {
     init_all_hardware();
-
+    printf("\nAvoid the obstacles!\n");
     while (true) {
         // Leitura do joystick
         adc_select_input(1);
@@ -445,9 +454,9 @@ int main() {
 
         if (!collision)
             update_game_logic(x_value, y_value);
-        else
+        else if(collision && score != 0)
             handle_collision();
-
+        joystic_movimentation(&ssd, x_value, y_value);
         check_score_progression();
         sleep_ms(delay);
     }
